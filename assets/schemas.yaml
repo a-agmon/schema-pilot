@@ -1,0 +1,89 @@
+- Table: 'Customers' : main table that holds customer data
+  - Columns:
+    - CustomerID (numeric): unique identifier for customer
+    - Name (varchar): customer's full name
+    - Email (varchar): customer contact email
+    - PhoneNumber (varchar): primary contact number
+    - RegionID (numeric): references Regions table
+    - RegistrationDate (date): customer registration date
+    - CustomerType (varchar): customer category (individual, business)
+
+- Table: 'Regions' : geographical regions for customer segmentation
+  - Columns:
+    - RegionID (numeric): unique identifier for region
+    - RegionName (varchar): name of the region
+    - Country (varchar): country of the region
+    - TimeZone (varchar): standard time zone
+
+- Table: 'Interactions' : log of all customer interactions
+  - Columns:
+    - InteractionID (numeric): unique identifier for interaction
+    - CustomerID (numeric): references Customers table
+    - AgentID (numeric): references Agents table
+    - InteractionType (varchar): type of interaction (call, chat, email)
+    - StartTime (datetime): interaction start time
+    - EndTime (datetime): interaction end time
+    - Duration (numeric): interaction length in seconds
+    - Channel (varchar): communication channel used
+
+- Table: 'Agents' : information about call center representatives
+  - Columns:
+    - AgentID (numeric): unique identifier for agent
+    - FirstName (varchar): agent's first name
+    - LastName (varchar): agent's last name
+    - HireDate (date): date agent was hired
+    - DepartmentID (numeric): references Departments table
+    - Email (varchar): agent's work email
+    - Status (varchar): current work status (active, on leave)
+
+- Table: 'Departments' : organizational departments in call center
+  - Columns:
+    - DepartmentID (numeric): unique identifier for department
+    - DepartmentName (varchar): name of the department
+    - Manager (varchar): name of department manager
+    - Location (varchar): physical location of department
+
+- Table: 'Tickets' : customer support tickets
+  - Columns:
+    - TicketID (numeric): unique identifier for ticket
+    - CustomerID (numeric): references Customers table
+    - AgentID (numeric): references Agents table
+    - CreationDate (datetime): ticket creation time
+    - LastUpdated (datetime): most recent ticket update
+    - Status (varchar): current ticket status (open, closed, in progress)
+    - Priority (varchar): ticket priority level
+    - Category (varchar): type of issue (technical, billing)
+
+- Table: 'TicketNotes' : additional notes on support tickets
+  - Columns:
+    - NoteID (numeric): unique identifier for note
+    - TicketID (numeric): references Tickets table
+    - AgentID (numeric): references Agents table
+    - NoteText (text): content of the note
+    - CreationTime (datetime): when note was added
+
+- Table: 'CustomerFeedback' : satisfaction surveys and feedback
+  - Columns:
+    - FeedbackID (numeric): unique identifier for feedback
+    - InteractionID (numeric): references Interactions table
+    - SatisfactionScore (numeric): customer satisfaction rating
+    - FeedbackText (text): detailed customer comments
+    - FeedbackDate (date): date feedback was submitted
+
+- Table: 'AgentPerformance' : tracking agent performance metrics
+  - Columns:
+    - PerformanceID (numeric): unique identifier for performance record
+    - AgentID (numeric): references Agents table
+    - MonthYear (date): month and year of performance record
+    - TotalInteractions (numeric): number of interactions handled
+    - AverageHandleTime (numeric): average interaction duration
+    - CustomerSatisfactionAverage (numeric): average satisfaction score
+    - ResolutionRate (numeric): percentage of issues resolved
+
+- Table: 'ServiceLevelAgreements' : SLA tracking for customer types
+  - Columns:
+    - SLAID (numeric): unique identifier for SLA
+    - CustomerType (varchar): type of customer (standard, premium, enterprise)
+    - MaxResponseTime (numeric): maximum allowed response time in minutes
+    - MaxResolutionTime (numeric): maximum allowed resolution time in hours
+    - EscalationProcess (text): details of escalation procedure
