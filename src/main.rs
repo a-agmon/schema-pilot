@@ -7,9 +7,9 @@ mod vecdb;
 async fn main() -> anyhow::Result<()> {
     init_tracing();
     let tables = read_tables_definitions("assets/schemas.yaml")?;
-    let table_taggings = generate_table_tagging(tables).await?;
-    table_taggings.iter().for_each(|tag| {
-        println!("\n---\n{}", tag);
+    let table_vectors = generate_table_vectors(tables).await?;
+    table_vectors.iter().for_each(|vec| {
+        println!("\n---\n{:?}", vec);
     });
     Ok(())
 }
@@ -23,6 +23,13 @@ fn read_tables_definitions(path: &str) -> anyhow::Result<Vec<String>> {
         .map(|s| s.to_string())
         .collect::<Vec<String>>();
     Ok(tables)
+}
+
+async fn generate_table_vectors(tables: Vec<String>) -> anyhow::Result<Vec<Vec<f32>>> {
+    let local_llm = llm::LlmClient::new("http://localhost", 11434);
+    local_llm
+        .generate_embedding(llm::EmbeddingModel::NomicText, tables)
+        .await
 }
 
 // the function receives a vector of table definitions and generates for each table
