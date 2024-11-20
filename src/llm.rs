@@ -1,5 +1,6 @@
 use ollama_rs::{
     generation::{
+        chat::ChatMessage,
         completion::request::GenerationRequest,
         embeddings::request::{EmbeddingsInput, GenerateEmbeddingsRequest},
     },
@@ -45,6 +46,14 @@ impl LlmClient {
             ))
             .await?;
         Ok(gen_res.response)
+    }
+
+    pub async fn generate_chat(
+        &self,
+        model: LlmModel,
+        messages: Vec<ChatMessage>,
+    ) -> anyhow::Result<String> {
+        todo!()
     }
 
     pub async fn generate_embedding(

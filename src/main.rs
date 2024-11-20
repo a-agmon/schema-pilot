@@ -1,31 +1,59 @@
 use futures::{future, stream, StreamExt};
-use std::sync::Arc;
+use std::{collections::HashMap, rc::Rc, sync::Arc};
+use vecdb::VecDB;
+use vectors::VectorsOps;
 mod llm;
 mod vecdb;
-
+mod vectors;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     init_tracing();
-    let tables = read_tables_definitions("assets/schemas.yaml")?;
-    let table_vectors = generate_table_vectors(tables).await?;
-    table_vectors.iter().for_each(|vec| {
-        println!("\n---\n{:?}", vec);
-    });
+    let vecdb = VecDB::create_or_open("runtime_assets/vecdb", "tables", Some(768)).await?;
+    let tables = read_tables_definitions("assets/schemas.yaml", "\n\n")?;
+    generate_vecdb_from_table_definitions(tables, &vecdb).await?;
     Ok(())
 }
 
-fn read_tables_definitions(path: &str) -> anyhow::Result<Vec<String>> {
+async fn generate_vecdb_from_table_definitions(
+    tables: Vec<String>,
+    vecdb: &VecDB,
+) -> anyhow::Result<()> {
+    let table_vectors = generate_vectors_from_strs(tables.clone()).await?;
+    let tables_names: Rc<Vec<String>> = Rc::new(
+        tables
+            .iter()
+            .map(|t| t.split("\n").next().unwrap().to_string())
+            .collect(),
+    );
+
+    let table_names_vectors = generate_vectors_from_strs(tables_names.as_ref().clone()).await?;
+    let joined_vectors = table_vectors
+        .iter()
+        .zip(table_names_vectors.iter())
+        .map(|(tbl_def, tbl_names)| {
+            VectorsOps::weighted_average(tbl_def, 1.0, tbl_names, 2.0, true)
+        })
+        .collect::<Vec<Vec<f32>>>();
+    let empty_vec = vec![""; tables_names.len()];
+    let table_refs: Vec<&str> = tables_names.iter().map(|s| s.as_str()).collect();
+    vecdb
+        .add_vector(&table_refs, &empty_vec, &empty_vec, joined_vectors, 768)
+        .await?;
+    Ok(())
+}
+
+fn read_tables_definitions(path: &str, split_by: &str) -> anyhow::Result<Vec<String>> {
     // read the file from the assets folder
     let file = std::fs::read_to_string(path)?;
     // split the file into lines
     let tables = file
-        .split("\n\n")
+        .split(split_by)
         .map(|s| s.to_string())
         .collect::<Vec<String>>();
     Ok(tables)
 }
 
-async fn generate_table_vectors(tables: Vec<String>) -> anyhow::Result<Vec<Vec<f32>>> {
+async fn generate_vectors_from_strs(tables: Vec<String>) -> anyhow::Result<Vec<Vec<f32>>> {
     let local_llm = llm::LlmClient::new("http://localhost", 11434);
     local_llm
         .generate_embedding(llm::EmbeddingModel::NomicText, tables)

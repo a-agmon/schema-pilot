@@ -141,7 +141,6 @@ impl VecDB {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde::Deserialize;
     use tempdir;
 
     #[tokio::test]
