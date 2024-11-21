@@ -47,3 +47,30 @@ impl VectorsOps {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_weighted_average_dominance() {
+        let v1 = vec![1.0, 0.0, 0.0];  // Vector pointing in x direction
+        let v2 = vec![0.0, 1.0, 0.0];  // Vector pointing in y direction
+        
+        // When v2 has much higher weight, result should be more similar to v2
+        let weighted = VectorsOps::weighted_average(&v1, 1.0, &v2, 3.0, true);
+        
+        let sim_to_v1 = VectorsOps::cosine_similarity(&weighted, &v1);
+        let sim_to_v2 = VectorsOps::cosine_similarity(&weighted, &v2);
+
+        println!("sim_to_v1: {}", sim_to_v1);
+        println!("sim_to_v2: {}", sim_to_v2);
+
+        // The weighted result should be more similar to v2 (the heavier vector)
+        assert!(sim_to_v2 > sim_to_v1);
+
+        // With normalized vectors and results, we can be more precise about the expected similarities
+        assert!((sim_to_v2 - 0.95).abs() < 0.05); // Should be very similar to v2
+        assert!((sim_to_v1 - 0.31).abs() < 0.05); // Should be less similar to v1
+    }
+}
