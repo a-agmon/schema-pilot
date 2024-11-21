@@ -8,9 +8,51 @@ mod vectors;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     init_tracing();
-    let vecdb = VecDB::create_or_open("runtime_assets/vecdb", "tables", Some(768)).await?;
-    let tables = read_tables_definitions("assets/schemas.yaml", "\n\n")?;
-    generate_vecdb_from_table_definitions(tables, &vecdb).await?;
+    embed_csv_tables_data("assets/table_definition.csv".to_string()).await?;
+    // let vecdb = VecDB::create_or_open("runtime_assets/vecdb", "tables", Some(768)).await?;
+    // let tables = read_tables_definitions("assets/schemas.yaml", "\n\n")?;
+    // generate_vecdb_from_table_definitions(tables, &vecdb).await?;
+    Ok(())
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct ColumnRecord {
+    #[serde(rename = "TableName")]
+    table_name: String,
+    #[serde(rename = "TableDesc")]
+    table_desc: String,
+    #[serde(rename = "ColumnName")]
+    column_name: String,
+    #[serde(rename = "DataType")]
+    data_type: String,
+    #[serde(rename = "Description")]
+    description: String,
+}
+impl ColumnRecord {
+    pub fn to_string(self) -> String {
+        format!(
+            "table_name: \"{}\", table_desc: \"{}\", column_name: \"{}\", data_type: \"{}\", description: \"{}\"",
+            self.table_name,
+            self.table_desc, 
+            self.column_name,
+            self.data_type,
+            self.description
+        )
+    }
+}
+
+
+async fn embed_csv_tables_data(path: String) -> anyhow::Result<()> {
+    let mut def_file = csv::Reader::from_path(path)?;
+    let records: Vec<String> = def_file
+        .deserialize::<ColumnRecord>()
+        .filter_map(Result::ok)
+        .map(ColumnRecord::to_string)
+        .collect();
+    let table_vectors = generate_vectors_from_strs(records.clone()).await?;
+    let table_defs: Vec<&str> = records.iter().map(String::as_str).collect();
+    let vecdb = VecDB::create_or_open("runtime_assets/vecdb", "columns", Some(768)).await?;
+    vecdb.add_vector(&vec![], &vec![], &table_defs, table_vectors, 768).await?;
     Ok(())
 }
 
