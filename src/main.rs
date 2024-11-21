@@ -36,8 +36,9 @@ async fn generate_vecdb_from_table_definitions(
         .collect::<Vec<Vec<f32>>>();
     let empty_vec = vec![""; tables_names.len()];
     let table_refs: Vec<&str> = tables_names.iter().map(|s| s.as_str()).collect();
+    let table_details: Vec<&str> = tables.iter().map(|s| s.as_str()).collect();
     vecdb
-        .add_vector(&table_refs, &empty_vec, &empty_vec, joined_vectors, 768)
+        .add_vector(&table_refs, &empty_vec, &table_details, joined_vectors, 768)
         .await?;
     Ok(())
 }
