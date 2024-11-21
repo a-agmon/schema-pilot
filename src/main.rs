@@ -51,8 +51,9 @@ async fn embed_csv_tables_data(path: String) -> anyhow::Result<()> {
         .collect();
     let table_vectors = generate_vectors_from_strs(records.clone()).await?;
     let table_defs: Vec<&str> = records.iter().map(String::as_str).collect();
+    let empty_vec = vec![""; table_vectors.len()];
     let vecdb = VecDB::create_or_open("runtime_assets/vecdb", "columns", Some(768)).await?;
-    vecdb.add_vector(&vec![], &vec![], &table_defs, table_vectors, 768).await?;
+    vecdb.add_vector(&empty_vec, &empty_vec, &table_defs, table_vectors, 768).await?;
     Ok(())
 }
 
