@@ -7,7 +7,7 @@ use arrow_array::{
 };
 use arrow_schema::ArrowError;
 
-use lancedb::query::{ExecutableQuery, QueryBase};
+use lancedb::query::{ExecutableQuery, QueryBase, VectorQuery};
 
 use futures::TryStreamExt;
 use lancedb::{
@@ -54,12 +54,31 @@ impl VecDB {
             default_table: table,
         })
     }
+    pub async fn find_similar_x(&self, vector: Vec<f32>, n: usize) -> anyhow::Result<RecordBatch> {
+        let query_results = self
+            .default_table
+            .query()
+            .nearest_to(vector)?
+            .column("vector")
+            .select(lancedb::query::Select::Columns(vec!["content".to_string()]))
+            .limit(n)
+            .execute()
+            .await?
+            .try_collect::<Vec<_>>()
+            .await?;
+
+        println!("Got {} batches of results", query_results.len());
+        let first = query_results.first().unwrap();
+        println!("number of rows: {}", first.num_rows());
+        Ok(first.clone())
+    }
 
     pub async fn find_similar(&self, vector: Vec<f32>, n: usize) -> anyhow::Result<RecordBatch> {
         let results = self
             .default_table
             .query()
             .nearest_to(vector)?
+            .select(lancedb::query::Select::Columns(vec!["content".to_string()]))
             .limit(n)
             .execute()
             .await?
@@ -68,6 +87,7 @@ impl VecDB {
 
         println!("Got {} batches of results", results.len());
         let first = results.first().unwrap();
+        println!("number of rows: {}", first.num_rows());
         Ok(first.clone())
     }
 
@@ -108,9 +128,10 @@ impl VecDB {
         contexts: &[&str],
         contents: &[&str],
         vectors: Vec<Vec<f32>>,
-        vec_dim: i32,
     ) -> anyhow::Result<()> {
         let schema = self.default_table.schema().await?;
+        // get vector dimension from the vectors array
+        let vec_dim = vectors[0].len() as i32;
         let key_array = StringArray::from_iter_values(filenames);
         let context_array = StringArray::from_iter_values(contexts);
         let content_array = StringArray::from_iter_values(contents);
@@ -163,7 +184,7 @@ mod tests {
         let contents = vec!["content1", "content2", "content3"];
         // Insert the vectors
         vec_db
-            .add_vector(&filenames, &contexts, &contents, vectors, 3)
+            .add_vector(&filenames, &contexts, &contents, vectors)
             .await?;
 
         // Test similarity search with a vector similar to the first one
@@ -205,7 +226,7 @@ mod tests {
 
         // Insert the vectors
         vec_db
-            .add_vector(&filenames, &contexts, &contents, vectors, 3)
+            .add_vector(&filenames, &contexts, &contents, vectors)
             .await?;
 
         // Search for similar vectors

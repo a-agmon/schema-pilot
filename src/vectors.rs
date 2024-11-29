@@ -23,7 +23,7 @@ impl VectorsOps {
         }
     }
 
-    fn normalize(v: &Vec<f32>) -> Vec<f32> {
+    pub fn normalize(v: &Vec<f32>) -> Vec<f32> {
         let norm = v.iter().map(|x| x * x).sum::<f32>().sqrt();
         // Avoid division by zero
         if norm == 0.0 {
@@ -54,12 +54,12 @@ mod tests {
 
     #[test]
     fn test_weighted_average_dominance() {
-        let v1 = vec![1.0, 0.0, 0.0];  // Vector pointing in x direction
-        let v2 = vec![0.0, 1.0, 0.0];  // Vector pointing in y direction
-        
+        let v1 = vec![1.0, 0.0, 0.0]; // Vector pointing in x direction
+        let v2 = vec![0.0, 1.0, 0.0]; // Vector pointing in y direction
+
         // When v2 has much higher weight, result should be more similar to v2
         let weighted = VectorsOps::weighted_average(&v1, 1.0, &v2, 3.0, true);
-        
+
         let sim_to_v1 = VectorsOps::cosine_similarity(&weighted, &v1);
         let sim_to_v2 = VectorsOps::cosine_similarity(&weighted, &v2);
 
