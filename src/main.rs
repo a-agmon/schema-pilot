@@ -47,25 +47,17 @@ async fn main() -> anyhow::Result<()> {
         let prompt_embedding = embedding_model.embed_multiple(vec![query.clone()])?;
         //println!("embedding shape: {:?} length: {}", prompt_embedding[0].len(), prompt_embedding.len());
         let prompt_embedding = prompt_embedding[0].clone();
+        let prompt_embedding_norm = vectors::VectorsOps::normalize(&prompt_embedding);
         // search relevant tables
-        let tables = vecdb.find_similar_x(prompt_embedding, 10 ).await?;
+        let tables = vecdb.find_similar_x(prompt_embedding_norm, 10 ).await?;
         let table_contents:Vec<TableContent> = serde_arrow::from_record_batch(&tables)?;
         let context_str = table_contents.iter()
         .map(|t| t.content.clone())
         .collect::<Vec<String>>().join("\n");
         let prompt = models::GetSchemaPrompt(&context_str, &query);
-        //println!("prompt: {}", prompt);
-        //println!("\n ########### \n");
+
         llama_model.generate_with_default(&prompt, 0.5, 250, Some(tx.clone())).await?;
-        // let _ = llama_model.generate(&prompt,
-        //      0.25, 
-        //      Some(5), 
-        //      Some(0.9),
-        //       42,
-        //     400,
-        //     1.2,
-        //     64).unwrap();
-    term.write_line("\n ----- \n")?;
+        term.write_line("\n ----- \n")?;
     }
     Ok(())
 }
