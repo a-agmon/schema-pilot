@@ -1,12 +1,15 @@
+use candle_transformers::models::mimi::encodec::ResampleMethod;
+use futures::StreamExt;
 use ollama_rs::{
     generation::{
         chat::ChatMessage,
         completion::request::GenerationRequest,
         embeddings::request::{EmbeddingsInput, GenerateEmbeddingsRequest},
+        options::GenerationOptions,
     },
     Ollama,
 };
-
+use tokio::sync::mpsc;
 pub struct LlmClient {
     ollama_client: Ollama,
 }
@@ -35,6 +38,37 @@ impl LlmClient {
     pub fn new(host: &str, port: u16) -> Self {
         let ollama_client = Ollama::new(host, port);
         Self { ollama_client }
+    }
+
+    pub async fn generate_text_stream(
+        &self,
+        model: LlmModel,
+        prompt: &str,
+        stream_channel: Option<mpsc::Sender<String>>,
+    ) -> anyhow::Result<()> {
+        let options = GenerationOptions::default()
+            .temperature(0.2)
+            .repeat_penalty(1.5)
+            .top_k(25)
+            .top_p(0.25);
+        let mut stream = self
+            .ollama_client
+            .generate_stream(
+                GenerationRequest::new(model.to_string(), prompt.to_string()).options(options),
+            )
+            .await
+            .unwrap();
+
+        while let Some(res) = stream.next().await {
+            let responses = res?;
+            for response in responses {
+                let response_text = response.response;
+                if let Some(ref stream_channel) = stream_channel {
+                    stream_channel.send(response_text).await?;
+                }
+            }
+        }
+        Ok(())
     }
 
     pub async fn generate_text(&self, model: LlmModel, prompt: &str) -> anyhow::Result<String> {

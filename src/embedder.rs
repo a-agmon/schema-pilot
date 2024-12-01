@@ -97,68 +97,6 @@ impl EmbeddingModel {
         let embeddings = embeddings.to_vec2::<f32>()?;
         Ok(embeddings)
     }
-
-    pub fn embed_multiple_X(&self, texts: Vec<String>) -> Result<Vec<Vec<f32>>> {
-        let mut cloned_tokenizer = self.tokenizer.clone();
-        let pp = cloned_tokenizer.get_padding_mut().unwrap();
-        pp.strategy = PaddingStrategy::BatchLongest;
-
-        let tokens = cloned_tokenizer
-            .encode_batch(texts.to_vec(), true)
-            .map_err(E::msg)?;
-
-        let token_ids = tokens
-            .iter()
-            .map(|tokens| {
-                let tokens = tokens.get_ids().to_vec();
-                Ok(Tensor::new(tokens.as_slice(), &self.device)?)
-            })
-            .collect::<Result<Vec<_>>>()?;
-        let attention_mask = tokens
-            .iter()
-            .map(|tokens| {
-                let tokens = tokens.get_attention_mask().to_vec();
-                Ok(Tensor::new(tokens.as_slice(), &self.device)?)
-            })
-            .collect::<Result<Vec<_>>>()?;
-        // Stack tensors to create batch dimensions
-        let token_ids = Tensor::stack(&token_ids, 0)?;
-        let attention_mask = Tensor::stack(&attention_mask, 0)?;
-        let token_type_ids = token_ids.zeros_like()?;
-
-        // Forward pass through the model
-        let embeddings = self
-            .model
-            .forward(&token_ids, &token_type_ids, Some(&attention_mask))?;
-
-        // The embeddings tensor has shape: [batch_size, sequence_length, hidden_size]
-
-        // Convert attention mask to same dtype and unsqueeze
-        let attention_mask = attention_mask.to_dtype(embeddings.dtype())?.unsqueeze(2)?; // Shape: [batch_size, sequence_length, 1]
-
-        // Expand attention_mask to match embeddings' shape
-        let attention_mask = attention_mask.expand(embeddings.dims())?; // Shape: [batch_size, sequence_length, hidden_size]
-
-        // Apply attention mask to embeddings
-        let masked_embeddings = embeddings * attention_mask.clone(); // Element-wise multiplication
-        let masked_embeddings = masked_embeddings?;
-        // Sum embeddings along the sequence length (dimension 1)
-        let sum_embeddings = masked_embeddings.sum(1)?; // Shape: [batch_size, hidden_size]
-
-        // Sum the attention mask over the sequence length
-        let sum_mask = attention_mask.sum(1)?; // Shape: [batch_size, hidden_size]
-
-        // Avoid division by zero
-        let sum_mask = sum_mask.maximum(1e-9)?;
-
-        // Compute mean pooled embeddings
-        let mean_pooled = sum_embeddings / sum_mask; // Element-wise division
-        let mean_pooled = mean_pooled?;
-        // Convert the mean_pooled tensor to Vec<Vec<f32>> directly
-        let embeddings_vecs = mean_pooled.to_vec2::<f32>()?;
-
-        Ok(embeddings_vecs)
-    }
 }
 pub fn normalize_l2(v: &Tensor) -> Result<Tensor> {
     Ok(v.broadcast_div(&v.sqr()?.sum_keepdim(1)?.sqrt()?)?)

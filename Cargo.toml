@@ -10,7 +10,7 @@ serde = "1.0.214"
 serde_json = "1.0.132"
 arrow-array = "52.2.0"
 arrow-schema = "52.2.0"
-ollama-rs = "0.2.1"
+ollama-rs = { version = "0.2.1", features = ["stream"] }
 serde_arrow = { version = "0.12.2", features = ["arrow-52"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = [

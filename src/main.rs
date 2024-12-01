@@ -22,8 +22,9 @@ pub struct TableContent {
 }
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    //let llm_client = llm::LlmClient::new("http://localhost", 11434);
     init_tracing();
-    let vecdb = VecDB::create_or_open("runtime_assets/vecdb", "idm_health100", Some(384)).await?;
+    let vecdb = VecDB::create_or_open("runtime_assets/vecdb", "hc100-table", Some(384)).await?;
     //create_embedding(&vecdb).await?;
     let mut llama_model = models::Llama321B::load().unwrap();
     let embedding_model = embedder::get_model_reference().unwrap();
@@ -57,6 +58,7 @@ async fn main() -> anyhow::Result<()> {
         let prompt = models::GetSchemaPrompt(&context_str, &query);
 
         llama_model.generate_with_default(&prompt, 0.5, 250, Some(tx.clone())).await?;
+       //llm_client.generate_text_stream(llm::LlmModel::Llama323b, &prompt, Some(tx.clone())).await?;
         term.write_line("\n ----- \n")?;
     }
     Ok(())
@@ -67,6 +69,7 @@ async fn create_embedding(vecdb: &VecDB) -> anyhow::Result<()> {
     //embed_csv_tables_data("assets/table_definition.csv".to_string()).await?;
     let tables = read_tables_definitions("/home/alonagmon/rust/idm_reader/tables.md", "\n\n")?;
     generate_vecdb_from_table_definitions(tables, &vecdb).await?;
+
     Ok(())
 }
 
@@ -117,19 +120,18 @@ async fn generate_vecdb_from_table_definitions(
     vecdb: &VecDB,
 ) -> anyhow::Result<()> {
     let table_vectors = generate_vectors_from_strs(tables.clone(), 25)?;
-    let tables_names: Rc<Vec<String>> = Rc::new(
+    let tables_names:Vec<String> = 
         tables
             .iter()
             .map(|t| t.split("\n").next().unwrap().to_string())
-            .collect(),
-    );
+            .collect();
 
-    let table_names_vectors = generate_vectors_from_strs(tables_names.as_ref().clone(), 25)?;
+    let table_names_vectors = generate_vectors_from_strs(tables_names.clone(), 25)?;
     let joined_vectors = table_vectors
         .iter()
         .zip(table_names_vectors.iter())
         .map(|(tbl_def, tbl_names)| {
-            VectorsOps::weighted_average(tbl_def, 1.0, tbl_names, 3.0, true)
+            VectorsOps::weighted_average(tbl_def, 1.0, tbl_names, 2.0, true)
         })
         .collect::<Vec<Vec<f32>>>();
     let empty_vec = vec![""; tables_names.len()];
