@@ -1,3 +1,16 @@
+pub fn GetSchemaPromptClean(table_definition: &str, user_query: &str) -> String {
+    format!(
+        r#" You are an AI assistant that answers questions about database schemas and tables. 
+    Your answer always include relevant information about the relevant tables and their purpose.
+    Here are the tables in our database:
+    {table_definition}
+    --
+    Based on the tables in our database, please answer the following question:
+    {user_query}
+    "#
+    )
+}
+
 pub fn GetSchemaPrompt(table_definition: &str, user_query: &str) -> String {
     format!(
         r#" 
